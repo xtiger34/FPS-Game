@@ -1,0 +1,45 @@
+name: Unity CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unity - Validate project structure
+        run: |
+          test -d Assets && test -d ProjectSettings && echo "Project looks ok."
+      - name: DOTNET format (C#)
+        uses: dotnet/format@v6
+        with:
+          repo: .
+          verbosity: minimal
+
+  build-windows:
+    # Enable after you set UNITY_LICENSE as a GitHub secret (ULF text)
+    if: ${{ secrets.UNITY_LICENSE != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+      - name: Build Unity (Windows64)
+        uses: game-ci/unity-builder@v4
+        with:
+          targetPlatform: StandaloneWindows64
+          projectPath: .
+          unityVersion: 2022.3.XXf1
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows64
+          path: build/StandaloneWindows64/*
